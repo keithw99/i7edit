@@ -52,6 +52,10 @@ String ToneExplorerView::getSelectedToneType() {
   return optionsPanel_.getSelectedToneType();
 }
 
+String ToneExplorerView::getCurrentSelectionType() {
+  return optionsPanel_.getCurrentSelectionType();
+}
+
 ToneExplorerView::Header::Header() {
    addAndMakeVisible(partHeader_);
    addAndMakeVisible(toneHeader_);
@@ -129,6 +133,10 @@ String ToneExplorerView::OptionsPanel::getSelectedToneType() {
   return toneTypeGroup_->getSelectedValue();
 }
 
+String ToneExplorerView::OptionsPanel::getCurrentSelectionType() {
+  return selectionTypeGroup_->getSelectedValue();
+}
+
 void ToneExplorerView::OptionsPanel::addListener(TextButtonGroup::Listener* listener) {
   selectionTypeGroup_->addListener(listener);
   toneTypeGroup_->addListener(listener);
@@ -169,11 +177,17 @@ ToneExplorerView::SelectionPanel::SelectionPanel() {
   tabView_.setScrollOnDragEnabled(true);
   tabView_.setScrollBarsShown(false, false);
   addAndMakeVisible(tabView_);
+  
+  // Tone tables.
+  addAndMakeVisible(categoryTable_);
+
 }
 
 void ToneExplorerView::SelectionPanel::resized() {
   FlexBox fb;
+  fb.flexDirection = FlexBox::Direction::column;
   fb.items.add(FlexItem(tabView_).withMaxHeight(30.0f).withFlex(1));
+  fb.items.add(FlexItem(categoryTable_).withFlex(1));
   fb.performLayout(getLocalBounds().toFloat());
 }
 
@@ -183,6 +197,14 @@ void ToneExplorerView::SelectionPanel::showCategories(const StringArray& categor
 
 void ToneExplorerView::SelectionPanel::showBanks(const StringArray& banks) {
   setTabs(banks);
+}
+
+const String ToneExplorerView::SelectionPanel::getSelectedTabName() {
+  return tabs_->getCurrentTabName();
+}
+
+void ToneExplorerView::SelectionPanel::addTabListener(ChangeListener* listener) {
+  tabs_->addChangeListener(listener);
 }
 
 void ToneExplorerView::SelectionPanel::setTabs(const StringArray& names) {
@@ -201,9 +223,93 @@ void ToneExplorerView::SelectionPanel::setTabs(const StringArray& names) {
   tabs_->setSize(width, height);
 }
 
+TableListBox* ToneExplorerView::SelectionPanel::getToneTable(const SelectionType selectionType) {
+  if (selectionType == SelectionType::byCategory) {
+    return &categoryTable_;
+  } else if (selectionType == SelectionType::byBank) {
+    return &bankTable_;
+  }
+  return nullptr;
+}
+
+CategoryToneTable::CategoryToneTable(TableListBox* table, ToneMap* toneMap) :
+  table_(table), toneMap_(toneMap), currentCategory_("") {
+    table_->setModel(this);
+    table_->getHeader().addColumn("Tone Number", 1, 30);
+    table_->getHeader().addColumn("Name", 2, 60);
+}
+
+void CategoryToneTable::categoryChanged(const String& category) {
+  if (category == currentCategory_) {
+    return;
+  }
+  
+  currentCategory_ = category;
+  
+  tones_.clearQuick(true);
+  for (const auto& ttPair : *toneMap_) {
+    for (const auto& bankPair : ttPair.second) {
+      for (const ToneInfo& ti : bankPair.second) {
+        if (category == ToneCategoryName(ti.category)) {
+          tones_.add(new ToneId{ttPair.first, bankPair.first, ti.number});
+        }
+      }
+    }
+  }
+  
+  table_->updateContent();
+}
+
+int CategoryToneTable::getNumRows() {
+  return tones_.size();
+}
+
+String CategoryToneTable::getTextForColumn(ToneId* toneId, int columnId) {
+  const ToneInfo& info = ToneTable::getToneInfoFor(*toneId);
+  switch (columnId) {
+    case 1:
+      return String(info.number);
+    case 2:
+      return info.displayName;
+    default:
+      return "";
+  }
+}
+
+void CategoryToneTable::paintRowBackground(Graphics& g, int rowNumber, int width, int height, bool rowIsSelected) {
+  auto alternateColour = table_->getLookAndFeel().findColour (ListBox::backgroundColourId)
+                                         .interpolatedWith (table_->getLookAndFeel().findColour (ListBox::textColourId), 0.03f);
+  if (rowIsSelected)
+      g.fillAll (Colours::lightblue);
+  else if (rowNumber % 2)
+      g.fillAll (alternateColour);
+}
+
+void CategoryToneTable::paintCell(Graphics& g, int rowNumber, int columnId, int width, int height, bool rowIsSelected) {
+    g.setColour (rowIsSelected ? Colours::darkblue : table_->getLookAndFeel().findColour (ListBox::textColourId));
+    //g.setFont (font);
+
+  if (auto* toneId = tones_[rowNumber]) {
+    auto text = getTextForColumn(toneId, columnId);
+
+    g.drawText (text, 2, 0, width - 4, height, Justification::centredLeft, true);
+  }
+
+  g.setColour (table_->getLookAndFeel().findColour (ListBox::backgroundColourId));
+  g.fillRect (width - 1, 0, 1, height);
+}
+
 ToneExplorer::ToneExplorer(ToneExplorerView& view, const StringArray& expansionBanks) :
   view_(view), expansionBanks_(StringArray(expansionBanks)) {
+    
+    tones_.reset(new ToneMap(ToneTable::toneMap));
+    categoryTable_.reset(
+        new CategoryToneTable(
+            view_.getSelectionPanel()->getToneTable(SelectionType::byCategory), tones_.get()));
+    
+    // Register as listener of view components.
     view_.getOptionsPanel()->addListener(this);
+    view_.getSelectionPanel()->addTabListener(this);
 }
 
 void ToneExplorer::selectionChanged(const int groupId, const String& selection) {
@@ -221,6 +327,19 @@ void ToneExplorer::selectionChanged(const int groupId, const String& selection) 
       break;
     default:
       break;
+  }
+}
+
+void ToneExplorer::changeListenerCallback(ChangeBroadcaster *source) {
+  if (source == view_.getSelectionPanel()->getTabs()) {
+    tabChanged(view_.getSelectionPanel()->getSelectedTabName());
+  }
+}
+
+void ToneExplorer::tabChanged(const String& tabName) {
+  const String& selection = view_.getCurrentSelectionType();
+  if (selection == "Category") {
+    categoryTable_->categoryChanged(tabName);
   }
 }
 
