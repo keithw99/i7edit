@@ -89,7 +89,7 @@ void ToneExplorerView::Header::PartHeader::resized() {
   int borderWidth = partLabel_.getBorderSize().getLeftAndRight();
   
   fb.items.add(FlexItem(partLabel_).withMaxWidth(txtWidth + borderWidth).withFlex(1));
-  fb.items.add(FlexItem(partNumber_).withMaxWidth(30).withFlex(1));
+  fb.items.add(FlexItem(partNumber_).withMinWidth(55).withMaxWidth(55).withFlex(1));
   fb.performLayout(getLocalBounds().toFloat());
 }
 
@@ -175,7 +175,7 @@ ToneExplorerView::SelectionPanel::SelectionPanel() {
   tabView_.setViewedComponent(tabs_.get(), false);
   tabView_.setSize(getLocalBounds().getWidth(), barThickness);
   tabView_.setScrollOnDragEnabled(true);
-  tabView_.setScrollBarsShown(false, false);
+  tabView_.setScrollBarsShown(false, false, false, true);
   addAndMakeVisible(tabView_);
   
   // Tone tables.
@@ -235,8 +235,11 @@ TableListBox* ToneExplorerView::SelectionPanel::getToneTable(const SelectionType
 CategoryToneTable::CategoryToneTable(TableListBox* table, ToneMap* toneMap) :
   table_(table), toneMap_(toneMap), currentCategory_("") {
     table_->setModel(this);
-    table_->getHeader().addColumn("Tone Number", 1, 30);
-    table_->getHeader().addColumn("Name", 2, 60);
+    table_->getHeader().addColumn("Name", 1, 120);
+    table_->getHeader().addColumn("Tone Type", 2, 60);
+    table_->getHeader().addColumn("Bank", 3, 60);
+    table_->getHeader().addColumn("Tone #", 4, 30);
+
 }
 
 void CategoryToneTable::categoryChanged(const String& category) {
@@ -260,6 +263,14 @@ void CategoryToneTable::categoryChanged(const String& category) {
   table_->updateContent();
 }
 
+ToneId CategoryToneTable::getSelectedTone(const String& category) {
+  return selectedTone_.at(category);
+}
+
+ToneId CategoryToneTable::getSelectedTone() {
+  return selectedTone_.at(currentCategory_);
+}
+
 int CategoryToneTable::getNumRows() {
   return tones_.size();
 }
@@ -268,11 +279,15 @@ String CategoryToneTable::getTextForColumn(ToneId* toneId, int columnId) {
   const ToneInfo& info = ToneTable::getToneInfoFor(*toneId);
   switch (columnId) {
     case 1:
-      return String(info.number);
-    case 2:
       return info.displayName;
+    case 2:
+      return ToneTypeName(toneId->toneType);
+    case 3:
+      return BankName(toneId->bank);
+    case 4:
+      return String(info.number);
     default:
-      return "";
+      return {};
   }
 }
 
@@ -299,8 +314,22 @@ void CategoryToneTable::paintCell(Graphics& g, int rowNumber, int columnId, int 
   g.fillRect (width - 1, 0, 1, height);
 }
 
-ToneExplorer::ToneExplorer(ToneExplorerView& view, const StringArray& expansionBanks) :
-  view_(view), expansionBanks_(StringArray(expansionBanks)) {
+void CategoryToneTable::selectedRowsChanged(int lastRowSelected) {
+  if (currentCategory_.isEmpty()) {
+    return;
+  }
+  
+  if (tones_[lastRowSelected] == nullptr) {
+    return;
+  }
+  ToneId tid = *tones_[lastRowSelected];
+  selectedTone_[currentCategory_] = tid;
+  
+  sendChangeMessage();
+}
+
+ToneExplorer::ToneExplorer(ToneExplorerView& view, OSCSender& oscSender, const StringArray& expansionBanks) :
+  view_(view), oscSender_(oscSender), expansionBanks_(StringArray(expansionBanks)) {
     
     tones_.reset(new ToneMap(ToneTable::toneMap));
     categoryTable_.reset(
@@ -310,6 +339,14 @@ ToneExplorer::ToneExplorer(ToneExplorerView& view, const StringArray& expansionB
     // Register as listener of view components.
     view_.getOptionsPanel()->addListener(this);
     view_.getSelectionPanel()->addTabListener(this);
+    categoryTable_->addChangeListener(this);
+    
+    // Connect to the OSC receiver.
+    if (!oscSender_.connect("127.0.0.1", 9099))
+      AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,
+      "Connection error",
+      "Could not connect to UDP port 9001.",
+      "OK");
 }
 
 void ToneExplorer::selectionChanged(const int groupId, const String& selection) {
@@ -333,7 +370,10 @@ void ToneExplorer::selectionChanged(const int groupId, const String& selection) 
 void ToneExplorer::changeListenerCallback(ChangeBroadcaster *source) {
   if (source == view_.getSelectionPanel()->getTabs()) {
     tabChanged(view_.getSelectionPanel()->getSelectedTabName());
+  } else if (source == categoryTable_.get()) {
+    sendToneSelectMessage(categoryTable_->getSelectedTone());
   }
+  
 }
 
 void ToneExplorer::tabChanged(const String& tabName) {
@@ -341,6 +381,16 @@ void ToneExplorer::tabChanged(const String& tabName) {
   if (selection == "Category") {
     categoryTable_->categoryChanged(tabName);
   }
+}
+
+void ToneExplorer::sendToneSelectMessage(const ToneId& toneId) {
+  if (!oscSender_.send("/i7/tone_type", (int32)toneId.toneType))
+    AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,
+    "Send Error",
+    "Failed to send.",
+    "OK");
+  oscSender_.send("/i7/bank", (int32)toneId.bank);
+  oscSender_.send("/i7/tone_number", (int32)toneId.toneNumber);
 }
 
 StringArray ToneExplorer::getBanksPerToneType(const String& toneType) {
