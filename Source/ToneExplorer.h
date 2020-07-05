@@ -117,15 +117,18 @@ private:
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ToneExplorerView)
 };
 
-class CategoryToneTable : public TableListBoxModel {
+class CategoryToneTable : public TableListBoxModel, public ChangeBroadcaster {
 public:
   CategoryToneTable(TableListBox* table, ToneMap* toneMap);
   void categoryChanged(const String& category);
+  ToneId getSelectedTone(const String& category);
+  ToneId getSelectedTone();
   
   // TableListBoxModel implementation.
   int getNumRows() override;
   void paintRowBackground(Graphics& g, int rowNumber, int width, int height, bool rowIsSelected) override;
   void paintCell(Graphics& g, int rowNumber, int columnId, int width, int height, bool rowIsSelected) override;
+  void selectedRowsChanged(int lastRowSelected) override;
   
 private:
   String getTextForColumn(ToneId* toneId, int columnId);
@@ -134,6 +137,7 @@ private:
   OwnedArray<ToneId> tones_;
   ToneMap* toneMap_;
   String currentCategory_;
+  std::unordered_map<String, ToneId> selectedTone_;
   
 #if JUCE_PROJUCER_LIVE_BUILD
 public:
@@ -143,7 +147,7 @@ public:
 
 class ToneExplorer : public TextButtonGroup::Listener, public ChangeListener {
 public:
-  ToneExplorer(ToneExplorerView& view, const StringArray& expansionBanks);
+  ToneExplorer(ToneExplorerView& view, OSCSender& oscSender, const StringArray& expansionBanks);
   
   // Implements TextButtonGroup::Listener
   void selectionChanged(const int groupId, const String& selection) override;
@@ -154,8 +158,10 @@ public:
 private:
   StringArray getBanksPerToneType(const String& toneType);
   void tabChanged(const String& tabName);
+  void sendToneSelectMessage(const ToneId& toneId);
   //==============================================================================
   ToneExplorerView& view_;
+  OSCSender& oscSender_;
   StringArray expansionBanks_;
   std::unique_ptr<ToneMap> tones_;
   

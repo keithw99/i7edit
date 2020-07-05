@@ -14,7 +14,7 @@ MainComponent::MainComponent()
   initializeSettings();
   
   StringArray expansionBanks = {"SRX-05", "SRX-06", "SRX-07", "SRX-08"};
-  toneExplorer_.reset(new ToneExplorer(toneExplorerView_, expansionBanks));
+  toneExplorer_.reset(new ToneExplorer(toneExplorerView_, oscSender_, expansionBanks));
   addAndMakeVisible(toneExplorerView_);
   
   setSize (600, 400);

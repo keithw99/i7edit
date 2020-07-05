@@ -9,6 +9,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "juce_osc/juce_osc.h"
 #include "ToneExplorer.h"
 
 //==============================================================================
@@ -34,6 +35,7 @@ private:
   ToneExplorerView toneExplorerView_;
   std::unique_ptr<ToneExplorer> toneExplorer_;
   ApplicationProperties appProperties_;
+  OSCSender oscSender_;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };
