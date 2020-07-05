@@ -342,10 +342,10 @@ ToneExplorer::ToneExplorer(ToneExplorerView& view, OSCSender& oscSender, const S
     categoryTable_->addChangeListener(this);
     
     // Connect to the OSC receiver.
-    if (!oscSender_.connect("127.0.0.1", 9099))
+    if (!oscSender_.connect("127.0.0.1", 9009))
       AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,
       "Connection error",
-      "Could not connect to UDP port 9001.",
+      "Could not connect to UDP port 9009.",
       "OK");
 }
 
@@ -384,13 +384,18 @@ void ToneExplorer::tabChanged(const String& tabName) {
 }
 
 void ToneExplorer::sendToneSelectMessage(const ToneId& toneId) {
-  if (!oscSender_.send("/i7/tone_type", (int32)toneId.toneType))
+  int partNumber = 1;
+  if (!oscSender_.send("/i7/function/tone_select",
+                       partNumber,
+                       static_cast<int32>(toneId.toneType),
+                       static_cast<int32>(toneId.bank),
+                       toneId.toneNumber))
     AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,
     "Send Error",
     "Failed to send.",
     "OK");
-  oscSender_.send("/i7/bank", (int32)toneId.bank);
-  oscSender_.send("/i7/tone_number", (int32)toneId.toneNumber);
+  //oscSender_.send("/i7/bank", (int32)toneId.bank);
+  //oscSender_.send("/i7/tone_number", (int32)toneId.toneNumber);
 }
 
 StringArray ToneExplorer::getBanksPerToneType(const String& toneType) {
