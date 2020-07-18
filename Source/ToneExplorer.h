@@ -23,13 +23,15 @@ enum class SelectionType {
 class ToneExplorerView    : public Component {
 public:
   struct Header : public Component {
-    Header();
-    void resized() override;
+  
    
     struct PartHeader : public Component {
       PartHeader();
       void resized() override;
+      ComboBox* getPartNumberComboBox() { return &partNumber_; }
+      int getSelectedPartNumber() { return partNumber_.getSelectedId(); }
       
+      //=============================================================================
       Label partLabel_;
       ComboBox partNumber_;
     };
@@ -41,6 +43,11 @@ public:
       Label toneName_;
       Label toneNumber_;
     };
+    
+    Header();
+    void resized() override;
+    PartHeader* getPartHeader() { return &partHeader_; }
+    ToneHeader* getToneHeader() { return &toneHeader_; }
     
     //==============================================================================
     PartHeader partHeader_;
@@ -100,8 +107,10 @@ public:
   String getCurrentSelectionType();
 
   // Public accessors.
+  Header* getHeader() { return &header_; }
   OptionsPanel* getOptionsPanel() { return &optionsPanel_; }
   SelectionPanel* getSelectionPanel() { return &selectionPanel_; }
+  int getSelectedPartNumber();
   
   // Inherited method overrides.
   void paint (Graphics& g) override;
@@ -145,9 +154,12 @@ public:
 #endif
 };
 
-class ToneExplorer : public TextButtonGroup::Listener, public ChangeListener {
+class ToneExplorer : public TextButtonGroup::Listener, public ChangeListener, public ComboBox::Listener {
 public:
   ToneExplorer(ToneExplorerView& view, OSCSender& oscSender, const StringArray& expansionBanks);
+  
+  // Implements ComboBox::Listener
+  void comboBoxChanged(ComboBox* comboBoxThatHasChanged) override;
   
   // Implements TextButtonGroup::Listener
   void selectionChanged(const int groupId, const String& selection) override;

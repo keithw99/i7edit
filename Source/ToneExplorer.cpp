@@ -56,6 +56,11 @@ String ToneExplorerView::getCurrentSelectionType() {
   return optionsPanel_.getCurrentSelectionType();
 }
 
+int ToneExplorerView::getSelectedPartNumber()
+{
+  return getHeader()->getPartHeader()->getSelectedPartNumber();
+}
+
 ToneExplorerView::Header::Header() {
    addAndMakeVisible(partHeader_);
    addAndMakeVisible(toneHeader_);
@@ -76,6 +81,7 @@ ToneExplorerView::Header::PartHeader::PartHeader() {
   partLabel_.setText("Part:", dontSendNotification);
   auto* partNumbers = choice::getChoicesFor(choice::PartNumber).get();
   partNumber_.addItemList(*partNumbers, 1);
+  partNumber_.setSelectedId(1);
   
   addAndMakeVisible(partLabel_);
   addAndMakeVisible(partNumber_);
@@ -331,7 +337,7 @@ void CategoryToneTable::selectedRowsChanged(int lastRowSelected) {
 ToneExplorer::ToneExplorer(ToneExplorerView& view, OSCSender& oscSender, const StringArray& expansionBanks) :
   view_(view), oscSender_(oscSender), expansionBanks_(StringArray(expansionBanks)) {
     
-    tones_.reset(new ToneMap(ToneTable::toneMap));
+    tones_.reset(new ToneMap(ToneTable::filteredToneMap(expansionBanks_)));
     categoryTable_.reset(
         new CategoryToneTable(
             view_.getSelectionPanel()->getToneTable(SelectionType::byCategory), tones_.get()));
@@ -347,6 +353,13 @@ ToneExplorer::ToneExplorer(ToneExplorerView& view, OSCSender& oscSender, const S
       "Connection error",
       "Could not connect to UDP port 9009.",
       "OK");
+}
+
+void ToneExplorer::comboBoxChanged(ComboBox* comboBoxThatHasChanged)
+{
+  if (comboBoxThatHasChanged == view_.getHeader()->getPartHeader()->getPartNumberComboBox()) {
+    // TODO: Update selection panel.
+  }
 }
 
 void ToneExplorer::selectionChanged(const int groupId, const String& selection) {
@@ -384,9 +397,9 @@ void ToneExplorer::tabChanged(const String& tabName) {
 }
 
 void ToneExplorer::sendToneSelectMessage(const ToneId& toneId) {
-  int partNumber = 1;
+  //int partNumber = 1;
   if (!oscSender_.send("/i7/function/tone_select",
-                       partNumber,
+                       view_.getSelectedPartNumber(),
                        static_cast<int32>(toneId.toneType),
                        static_cast<int32>(toneId.bank),
                        toneId.toneNumber))
