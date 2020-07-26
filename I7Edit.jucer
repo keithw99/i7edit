@@ -7,6 +7,10 @@
             file="Data/i7_instruments.csv"/>
     </GROUP>
     <GROUP id="{0C2E69DB-FE01-BB13-5ED2-187B560BB6ED}" name="Source">
+      <FILE id="ujjikH" name="ParamState.cpp" compile="1" resource="0" file="Source/ParamState.cpp"/>
+      <FILE id="Wxy57z" name="ParamState.h" compile="0" resource="0" file="Source/ParamState.h"/>
+      <FILE id="RKYT6O" name="Controller.cpp" compile="1" resource="0" file="Source/Controller.cpp"/>
+      <FILE id="oXx6Zd" name="Controller.h" compile="0" resource="0" file="Source/Controller.h"/>
       <FILE id="dxS8hz" name="GuiCommon.cpp" compile="1" resource="0" file="Source/GuiCommon.cpp"/>
       <FILE id="d9vcQ8" name="GuiCommon.h" compile="0" resource="0" file="Source/GuiCommon.h"/>
       <FILE id="QOUPvY" name="ToneExplorer.h" compile="0" resource="0" file="Source/ToneExplorer.h"/>

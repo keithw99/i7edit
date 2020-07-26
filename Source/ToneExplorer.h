@@ -24,7 +24,6 @@ class ToneExplorerView    : public Component {
 public:
   struct Header : public Component {
   
-   
     struct PartHeader : public Component {
       PartHeader();
       void resized() override;
@@ -66,6 +65,9 @@ public:
     void resized() override;
     //void selectionChanged(const int groupId, const String& selection) override;
   
+    // Public accessors.
+    TextButtonGroup* getSelectionTypeGroup() { return selectionTypeGroup_.get(); }
+    
     //==============================================================================
     std::unique_ptr<TextButtonGroup> selectionTypeGroup_;
     std::unique_ptr<TextButtonGroup> toneTypeGroup_;
@@ -81,7 +83,8 @@ public:
     void showCategories(const StringArray& categories);
     void showBanks(const StringArray& banks);
     
-    TabbedButtonBar* getTabs() { return tabs_.get(); }
+    //TabbedButtonBar* getTabs() { return tabs_.get(); }
+    TabbedButtonBar* getTabs() { return tabView_.getTabs(); }
     const String getSelectedTabName();
     void addTabListener(ChangeListener* listener);
     
@@ -91,8 +94,11 @@ public:
   private:
     void setTabs(const StringArray& names);
     //============================================================================
+    /*
     std::unique_ptr<TabbedButtonBar> tabs_;
     Viewport tabView_;
+    */
+    ScrollingTabBar tabView_;
     TableListBox categoryTable_;
     TableListBox bankTable_;
   };
@@ -105,6 +111,7 @@ public:
   void displayBankView(const StringArray& banks);
   String getSelectedToneType();
   String getCurrentSelectionType();
+  void setCurrentSelectionType(const String& selectionType);
 
   // Public accessors.
   Header* getHeader() { return &header_; }
@@ -138,6 +145,7 @@ public:
   void paintRowBackground(Graphics& g, int rowNumber, int width, int height, bool rowIsSelected) override;
   void paintCell(Graphics& g, int rowNumber, int columnId, int width, int height, bool rowIsSelected) override;
   void selectedRowsChanged(int lastRowSelected) override;
+  void cellClicked(int rowNumber, int columnId, const MouseEvent&) override;
   
 private:
   String getTextForColumn(ToneId* toneId, int columnId);
@@ -154,7 +162,11 @@ public:
 #endif
 };
 
-class ToneExplorer : public TextButtonGroup::Listener, public ChangeListener, public ComboBox::Listener {
+class ToneExplorer : public TextButtonGroup::Listener,
+                     public ChangeListener,
+                     public ComboBox::Listener,
+                     public OSCReceiver::ListenerWithOSCAddress<OSCReceiver::MessageLoopCallback>
+{
 public:
   ToneExplorer(ToneExplorerView& view, OSCSender& oscSender, const StringArray& expansionBanks);
   
@@ -166,6 +178,9 @@ public:
   
   // Implements ChangeListener
   void changeListenerCallback (ChangeBroadcaster* source) override;
+  
+  // Implements OSCReceiver::Listener
+  void oscMessageReceived(const OSCMessage& message) override;
   
 private:
   StringArray getBanksPerToneType(const String& toneType);
