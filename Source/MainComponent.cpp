@@ -15,8 +15,9 @@ MainComponent::MainComponent()
   
   StringArray expansionBanks = {"SRX-05", "SRX-06", "SRX-07", "SRX-08"};
   toneExplorer_.reset(new ToneExplorer(toneExplorerView_, oscSender_, expansionBanks));
-  addAndMakeVisible(toneExplorerView_);
+  initializeOsc();
   
+  addAndMakeVisible(toneExplorerView_);
   setSize (600, 400);
 }
 
@@ -31,6 +32,17 @@ void MainComponent::initializeSettings() {
     .getChildFile(ProjectInfo::projectName).getFullPathName();
   appProperties_.setStorageParameters(options);
 }
+
+void MainComponent::initializeOsc()
+{
+  if (!OSCReceiver::connect(9010)) {
+    DBG ("ERROR: could not connect to port 9010.");
+  }
+  OSCAddress address(osc::address::ToneSelect);
+  OSCReceiver::addListener(toneExplorer_.get(), address);
+
+}
+
 MainComponent::~MainComponent()
 {
 }

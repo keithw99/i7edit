@@ -56,6 +56,11 @@ String ToneExplorerView::getCurrentSelectionType() {
   return optionsPanel_.getCurrentSelectionType();
 }
 
+void ToneExplorerView::setCurrentSelectionType(const String& selectionType)
+{
+  optionsPanel_.getSelectionTypeGroup()->setSelectedValue(selectionType);
+}
+
 int ToneExplorerView::getSelectedPartNumber()
 {
   return getHeader()->getPartHeader()->getSelectedPartNumber();
@@ -167,8 +172,9 @@ void ToneExplorerView::OptionsPanel::resized() {
 }
 
 ToneExplorerView::SelectionPanel::SelectionPanel() {
-  tabs_.reset(new TabbedButtonBar(juce::TabbedButtonBar::TabsAtTop));
+  //tabs_.reset(new TabbedButtonBar(juce::TabbedButtonBar::TabsAtTop));
 
+  /*
   int barThickness = 30;
   int barWidth = 0;
   for (int i = 0; i < tabs_->getNumTabs(); ++i) {
@@ -176,12 +182,15 @@ ToneExplorerView::SelectionPanel::SelectionPanel() {
   }
   tabs_->setSize(barWidth, barThickness);
   addAndMakeVisible(tabs_.get());
- 
+  */
+  
+  /*
   // Viewport for tabs that can be dragged left and right.
   tabView_.setViewedComponent(tabs_.get(), false);
   tabView_.setSize(getLocalBounds().getWidth(), barThickness);
   tabView_.setScrollOnDragEnabled(true);
   tabView_.setScrollBarsShown(false, false, false, true);
+  */
   addAndMakeVisible(tabView_);
   
   // Tone tables.
@@ -206,14 +215,17 @@ void ToneExplorerView::SelectionPanel::showBanks(const StringArray& banks) {
 }
 
 const String ToneExplorerView::SelectionPanel::getSelectedTabName() {
-  return tabs_->getCurrentTabName();
+  //return tabs_->getCurrentTabName();
+  return tabView_.getSelectedTabName();
 }
 
 void ToneExplorerView::SelectionPanel::addTabListener(ChangeListener* listener) {
-  tabs_->addChangeListener(listener);
+  //tabs_->addChangeListener(listener);
+  tabView_.addListener(listener);
 }
 
 void ToneExplorerView::SelectionPanel::setTabs(const StringArray& names) {
+  /*
   tabs_->clearTabs();
   auto bgColor = getLookAndFeel().findColour(ResizableWindow::backgroundColourId);
   int height = 30;
@@ -227,6 +239,8 @@ void ToneExplorerView::SelectionPanel::setTabs(const StringArray& names) {
     }
   }
   tabs_->setSize(width, height);
+  */
+  tabView_.setTabs(names);
 }
 
 TableListBox* ToneExplorerView::SelectionPanel::getToneTable(const SelectionType selectionType) {
@@ -246,6 +260,9 @@ CategoryToneTable::CategoryToneTable(TableListBox* table, ToneMap* toneMap) :
     table_->getHeader().addColumn("Bank", 3, 60);
     table_->getHeader().addColumn("Tone #", 4, 30);
 
+    // Disable automatically selecting row on click. Selection will happen
+    // in cellClicked().
+    table_->setClickingTogglesRowSelection(false);
 }
 
 void CategoryToneTable::categoryChanged(const String& category) {
@@ -334,6 +351,11 @@ void CategoryToneTable::selectedRowsChanged(int lastRowSelected) {
   sendChangeMessage();
 }
 
+void CategoryToneTable::cellClicked(int rowNumber, int columnId, const MouseEvent&)
+{
+  table_->selectRow(rowNumber);
+}
+
 ToneExplorer::ToneExplorer(ToneExplorerView& view, OSCSender& oscSender, const StringArray& expansionBanks) :
   view_(view), oscSender_(oscSender), expansionBanks_(StringArray(expansionBanks)) {
     
@@ -346,6 +368,9 @@ ToneExplorer::ToneExplorer(ToneExplorerView& view, OSCSender& oscSender, const S
     view_.getOptionsPanel()->addListener(this);
     view_.getSelectionPanel()->addTabListener(this);
     categoryTable_->addChangeListener(this);
+    
+    // Set defaults.
+    view_.setCurrentSelectionType("Category");
     
     // Connect to the OSC receiver.
     if (!oscSender_.connect("127.0.0.1", 9009))
@@ -387,6 +412,20 @@ void ToneExplorer::changeListenerCallback(ChangeBroadcaster *source) {
     sendToneSelectMessage(categoryTable_->getSelectedTone());
   }
   
+}
+
+void ToneExplorer::oscMessageReceived(const OSCMessage &message)
+{
+    if (message.size() != 4) {
+      DBG ("ERROR: received invalid tone_select OSC message");
+    }
+    
+    ToneId toneId = {
+      static_cast<ToneType>(message[1].getInt32()),
+      static_cast<Bank>(message[2].getInt32()),
+      message[3].getInt32()
+    };
+    
 }
 
 void ToneExplorer::tabChanged(const String& tabName) {

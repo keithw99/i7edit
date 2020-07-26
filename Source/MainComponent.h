@@ -17,7 +17,8 @@
     This component lives inside our window, and this is where you should put all
     your controls and content.
 */
-class MainComponent   : public Component
+class MainComponent   : public Component,
+                        private OSCReceiver
 {
 public:
   //==============================================================================
@@ -30,6 +31,7 @@ public:
 
 private:
   void initializeSettings();
+  void initializeOsc();
   //==============================================================================
   // Your private member variables go here...
   ToneExplorerView toneExplorerView_;
