@@ -14,8 +14,11 @@
 
 #include "ParamState.h"
 
-class Controller : public OSCReceiver
+class Controller : public OSCSender,
+                   public OSCReceiver
 {
+public:
+  void FetchTemporaryStudioSetParts();
   
 private:
   ParamState paramState_;

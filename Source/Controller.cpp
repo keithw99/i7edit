@@ -9,3 +9,8 @@
 */
 
 #include "Controller.h"
+
+void Controller::FetchTemporaryStudioSetParts()
+{
+  
+}

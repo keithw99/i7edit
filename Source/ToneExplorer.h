@@ -99,6 +99,7 @@ public:
     Viewport tabView_;
     */
     ScrollingTabBar tabView_;
+    //Viewport tableView_;
     TableListBox categoryTable_;
     TableListBox bankTable_;
   };
@@ -186,6 +187,7 @@ private:
   StringArray getBanksPerToneType(const String& toneType);
   void tabChanged(const String& tabName);
   void sendToneSelectMessage(const ToneId& toneId);
+  void sendFetchPartsMessage();
   //==============================================================================
   ToneExplorerView& view_;
   OSCSender& oscSender_;

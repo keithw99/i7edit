@@ -194,6 +194,11 @@ ToneExplorerView::SelectionPanel::SelectionPanel() {
   addAndMakeVisible(tabView_);
   
   // Tone tables.
+  //tableView_.setViewedComponent(&categoryTable_);
+  //tableView_.setScrollOnDragEnabled(true);
+  //addAndMakeVisible(tableView_);
+  categoryTable_.getViewport()->setScrollOnDragEnabled(true);
+  categoryTable_.setViewportIgnoreDragFlag(true);
   addAndMakeVisible(categoryTable_);
 
 }
@@ -202,8 +207,10 @@ void ToneExplorerView::SelectionPanel::resized() {
   FlexBox fb;
   fb.flexDirection = FlexBox::Direction::column;
   fb.items.add(FlexItem(tabView_).withMaxHeight(30.0f).withFlex(1));
+  //fb.items.add(FlexItem(tableView_).withFlex(1));
   fb.items.add(FlexItem(categoryTable_).withFlex(1));
   fb.performLayout(getLocalBounds().toFloat());
+  //categoryTable_.setSize(tableView_.getWidth(), tableView_.getHeight());
 }
 
 void ToneExplorerView::SelectionPanel::showCategories(const StringArray& categories) {
@@ -395,6 +402,7 @@ void ToneExplorer::selectionChanged(const int groupId, const String& selection) 
       } else {
         String toneType = view_.getSelectedToneType();
         view_.displayBankView(getBanksPerToneType(toneType));
+        sendFetchPartsMessage();
       }
       break;
     case 2:  // tone type
@@ -429,6 +437,7 @@ void ToneExplorer::oscMessageReceived(const OSCMessage &message)
 }
 
 void ToneExplorer::tabChanged(const String& tabName) {
+  //sendFetchPartsMessage();
   const String& selection = view_.getCurrentSelectionType();
   if (selection == "Category") {
     categoryTable_->categoryChanged(tabName);
@@ -448,6 +457,16 @@ void ToneExplorer::sendToneSelectMessage(const ToneId& toneId) {
     "OK");
   //oscSender_.send("/i7/bank", (int32)toneId.bank);
   //oscSender_.send("/i7/tone_number", (int32)toneId.toneNumber);
+}
+
+void ToneExplorer::sendFetchPartsMessage()
+{
+  if (!oscSender_.send("/i7/function/fetch_parts")) {
+    AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,
+       "Send Error",
+       "Failed to send.",
+       "OK");
+  }
 }
 
 StringArray ToneExplorer::getBanksPerToneType(const String& toneType) {
